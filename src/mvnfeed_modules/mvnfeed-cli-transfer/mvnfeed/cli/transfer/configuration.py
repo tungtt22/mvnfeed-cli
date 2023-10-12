@@ -5,7 +5,7 @@
 
 import base64
 import getpass
-
+from os import environ
 from mvnfeed.cli.common.config import REPOSITORY, AUTHORIZATION, URL, repo_section_name, load_config, save_config
 
 STAGE_DIR_CONFIGNAME = 'stage_dir'
@@ -48,8 +48,10 @@ def add_repository(name, username, url=None):
         raise ValueError('Username must be defined')
     if url is None:
         raise ValueError('Url must be defined')
-
-    password = getpass.getpass()
+    if "MAVEN_PASSWORD" in environ and environ.get('MAVEN_PASSWORD') is not None:
+        password = environ.get('MAVEN_PASSWORD');
+    else: 
+        password = getpass.getpass()
     encoded = base64.b64encode((username + ':' + password).encode('utf-8'))
     authorization = 'Basic ' + encoded.decode('utf-8')
 

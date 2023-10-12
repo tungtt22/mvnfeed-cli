@@ -47,6 +47,7 @@ def transfer_bulk(filename, from_repo, to_repo, transfer_deps=False):
     :param transfer_deps: True if the dependencies must be transferred
     """
     logging.info('transferring from file %s', filename)
+    print('transferring from file %s', filename)
 
     config = load_config()
     from_repository = get_repository(config, from_repo)
@@ -55,17 +56,21 @@ def transfer_bulk(filename, from_repo, to_repo, transfer_deps=False):
 
     with open(filename, 'r') as file:
         lines = file.readlines()
+        previous = ""
         for line in lines:
             line = line.strip().rstrip()
-            if line:
+            if line and line != previous:
                 _transfer_single_artifact(line, from_repository, to_repository, stage_dir, transfer_deps)
+            previous = line
 
 
 def _transfer_single_artifact(name, from_repository, to_repository, stage_dir, transfer_deps):
-    logging.debug('download url: %s', from_repository[URL])
-    logging.debug('upload url: %s', to_repository[URL])
-    logging.debug('stage directory: %s', stage_dir)
-
+    logging.info('download url: %s', from_repository[URL])
+    logging.info('upload url: %s', to_repository[URL])
+    logging.info('stage directory: %s', stage_dir)
+    print ('download url: %s', from_repository[URL])
+    print ('upload url: %s', to_repository[URL])
+    print ('stage directory: %s', stage_dir)
     if not os.path.exists(stage_dir):
         raise ValueError('Output directory doesn\'t exist: ' + stage_dir)
 
@@ -147,8 +152,8 @@ def _transfer_single_artifact(name, from_repository, to_repository, stage_dir, t
             if dependenciesNode is None:
                 continue
 
-            logging.debug("Downloading children")
-            for dependencyNode in dependenciesNode.getchildren():
+            logging.info("Downloading children")
+            for dependencyNode in dependenciesNode.items():
                 dep_group_id = _findNodeValue(dependencyNode, 'groupId')
                 dep_artifact_id = _findNodeValue(dependencyNode, 'artifactId')
                 dep_version = _findNodeValue(dependencyNode, 'version')
@@ -249,26 +254,26 @@ def _download_file(from_repository, path, filename, length=16*1024):
     Stores the path into the given filename.
     """
     if os.path.exists(filename):
-        logging.debug('%s already downloaded', filename)
+        logging.info('%s already downloaded', filename)
 
     if URL not in from_repository or not from_repository[URL]:
         raise ValueError('Repository missing url: ' + get_repository_shortname(from_repository))
 
     url = _append_url(from_repository[URL], path)
-    logging.debug('downloading from %s', url)
+    logging.info('downloading from %s', url)
     try:
         request = Request(url)
         if AUTHORIZATION in from_repository and from_repository[AUTHORIZATION]:
-            logging.debug('authorization header added')
+            logging.info('authorization header added')
             request.add_header('Authorization', from_repository[AUTHORIZATION])
         else:
-            logging.debug('no authorization configured')
+            logging.info('no authorization configured')
 
         response = urlopen(request)
         with open(filename, 'wb') as file:
             shutil.copyfileobj(response, file, length)
     except Exception as ex:
-        logging.debug('exception while downloading (expected): %s', ex)
+        logging.error('exception while downloading (expected): %s', ex)
         None
 
 
@@ -281,17 +286,17 @@ def _already_uploaded(to_repository, path):
     url = _append_url(to_repository[URL], path)
 
     if AUTHORIZATION in to_repository and to_repository[AUTHORIZATION]:
-        logging.debug('authorization header added')
+        logging.info('authorization header added')
         headers = {'Authorization': to_repository[AUTHORIZATION]}
     else:
-        logging.debug('no authorization configured')
+        logging.info('no authorization configured')
         headers = {}
 
     try:
         response = requests.head(url, headers=headers)
         return response.ok
     except Exception as ex:
-        logging.debug('exception while checking existence %s', ex)
+        logging.error('exception while checking existence %s', ex)
         return False
 
 
@@ -302,19 +307,19 @@ def _upload_file(to_repository, path, filename):
     if not os.path.exists(filename):
         # we try to upload a file that was not downloaded (for example an artifact without
         # sources.) This is expected to happen and is not an error.
-        logging.debug('missing file to upload, skipping %s', filename)
+        logging.info('missing file to upload, skipping %s', filename)
         return False
 
     if URL not in to_repository or not to_repository[URL]:
         raise ValueError('Repository missing upload url: ' + get_repository_shortname(to_repository))
     url = _append_url(to_repository[URL], path)
 
-    logging.debug('uploading to ' + url)
+    logging.info('uploading to ' + url)
     if AUTHORIZATION in to_repository and to_repository[AUTHORIZATION]:
-        logging.debug('authorization header added')
+        logging.info('authorization header added')
         headers = {'Authorization': to_repository[AUTHORIZATION]}
     else:
-        logging.debug('no authorization configured')
+        logging.info('no authorization configured')
         headers = {}
 
     try:
